@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Next-Gen Threat Detection</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #0b1120; color: #e2e8f0; font-family: 'Courier New', Courier, monospace; overflow-x: hidden; }
+        
+        #sidebar { height: 100vh; background-color: #020617; border-right: 1px solid #334155; position: fixed; width: 250px; padding-top: 20px; }
+        .nav-link { color: #94a3b8; font-weight: bold; margin: 5px 15px; border-radius: 5px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; font-size: 0.9em;}
+        .nav-link:hover, .nav-link.active { background-color: #1e293b; color: #38bdf8; }
+        
+        #main-content { margin-left: 250px; padding: 30px; }
+        .page-view { display: none; }
+        .page-view.active-page { display: block; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .card { background-color: #1e293b; border: 1px solid #334155; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5); margin-bottom: 20px;}
+        .secure { color: #22c55e; font-weight: bold; }
+        .fraud { color: #ef4444; font-weight: bold; animation: blink 1s infinite; }
+        .warning { color: #f59e0b; font-weight: bold; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+        .btn-custom { margin: 8px 0; width: 100%; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+        
+        #terminal { background-color: #020617; padding: 15px; border-radius: 5px; height: 350px; overflow-y: auto; font-size: 0.85em; border: 1px solid #334155; }
+        .log-entry { margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px dashed #334155; }
+        .text-muted { color: #94a3b8 !important; }
+        
+        .table-dark { background-color: #1e293b; }
+        .table-dark th { color: #38bdf8; border-bottom: 1px solid #334155; font-size: 0.9em; position: sticky; top: 0; background-color: #1e293b; z-index: 1;}
+        .table-dark td { border-bottom: 1px solid #334155; vertical-align: middle; font-size: 0.9em;}
+        
+        /* Custom Scrollbar for tables */
+        .table-scroll { max-height: 500px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <h5 class="text-center mb-4 px-3" style="color: #38bdf8; font-weight: bold;">XGBoost Security</h5>
+        <hr class="border-secondary mx-3">
+        <div class="nav flex-column">
+            <a class="nav-link active" onclick="switchPage('page-live', this)">Live Monitor</a>
+            <a class="nav-link" onclick="switchPage('page-all', this)">All Transactions</a>
+            <a class="nav-link" onclick="switchPage('page-database', this)">Threat Database</a>
+            <a class="nav-link" onclick="switchPage('page-review', this)">Suspicious Review</a>
+            <a class="nav-link" onclick="switchPage('page-analytics', this)">AI Analytics</a>
+        </div>
+    </div>
+
+    <div id="main-content">
+        
+        <div id="page-live" class="page-view active-page">
+            <h2 class="mb-4 border-bottom pb-2 border-secondary">Command Center</h2>
+          
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="card p-3 text-center">
+                        <h6 class="text-muted text-uppercase">Total Transaction Volume Monitored</h6>
+                        <h2 class="text-white" style="font-weight: bold;" id="totalVolume">₹0.00</h2>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card p-3 text-center border-danger">
+                        <h6 class="text-muted text-uppercase">Funds Protected (Fraud Blocked)</h6>
+                        <h2 class="text-danger" style="font-weight: bold;" id="moneyProtected">₹0.00</h2>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="card p-3 h-100">
+                        <h6 class="text-uppercase text-muted mb-3">System Controls</h6>
+                        <button class="btn btn-outline-success btn-custom" onclick="scanTransaction('normal')">Scan Traffic</button>
+                        <button class="btn btn-outline-danger btn-custom" onclick="scanTransaction('fraud')">Simulate Attack</button>
+                        <hr class="border-secondary my-3">
+                        <button id="autoBtn" class="btn btn-primary btn-custom" onclick="toggleAutoScan()">Auto-Scan</button>
+                        
+                        <div class="mt-4 p-2 text-center" style="background-color: #0f172a; border-radius: 5px;">
+                            <div class="text-muted small text-uppercase">Packets Scanned</div>
+                            <div id="totalScanned" style="font-size: 1.5em; font-weight: bold; color: #38bdf8;">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card p-3 h-100 d-flex flex-column align-items-center">
+                        <h6 class="text-uppercase text-muted mb-3 w-100 text-center">Threat Distribution</h6>
+                        <div style="width: 100%; max-width: 200px;">
+                            <canvas id="threatChart"></canvas>
+                        </div>
+                        <div class="mt-auto w-100 d-flex justify-content-between text-center pt-3 border-top border-secondary">
+                            <div><div class="text-success fw-bold fs-5" id="safeCount">0</div><div class="small text-muted">SECURE</div></div>
+                            <div><div class="text-warning fw-bold fs-5" id="reviewCount">0</div><div class="small text-muted">REVIEW</div></div>
+                            <div><div class="text-danger fw-bold fs-5" id="fraudCount">0</div><div class="small text-muted">THREATS</div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-5">
+                    <div class="card p-3 h-100">
+                        <h6 class="text-uppercase text-muted mb-3">Network Packet Log</h6>
+                        <div id="terminal">
+                            <div class="text-muted">> XGBoost Engine initialized for India Region...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="page-all" class="page-view">
+            <h2 class="mb-4 border-bottom pb-2 border-secondary">Master Transaction Ledger</h2>
+            <div class="card p-3">
+                <p class="text-muted">A live feed of all processed network traffic. Retains the last 100 transactions to maintain system performance.</p>
+                <div class="table-scroll">
+                    <table class="table table-dark table-hover mt-2">
+                        <thead><tr><th>Time</th><th>TXN ID</th><th>Location (IP)</th><th>Amount</th><th>Risk Score</th><th>Status</th></tr></thead>
+                        <tbody id="allTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="page-database" class="page-view">
+            <h2 class="mb-4 border-bottom pb-2 border-secondary">Critical Threat Database</h2>
+            <div class="card p-3">
+                <p class="text-muted">Transactions definitively classified as FRAUD by the AI and automatically blocked.</p>
+                <div class="table-scroll">
+                    <table class="table table-dark table-hover mt-2">
+                        <thead><tr><th>Time</th><th>TXN ID</th><th>Location (IP)</th><th>Amount Blocked</th><th>Risk Score</th><th>Status</th></tr></thead>
+                        <tbody id="threatTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="page-review" class="page-view">
+            <h2 class="mb-4 border-bottom pb-2 border-secondary">Manual Review Queue (Anomalies)</h2>
+            <div class="card p-3">
+                <p class="text-muted">These transactions were cleared by the AI, but triggered a rule-based anomaly alert (e.g., Unusually high transfer amount > ₹80,000).</p>
+                <div class="table-scroll">
+                    <table class="table table-dark table-hover mt-2">
+                        <thead><tr><th>Time</th><th>TXN ID</th><th>Location (IP)</th><th>Amount</th><th>Reason</th><th>Action</th></tr></thead>
+                        <tbody id="reviewTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="page-analytics" class="page-view">
+            <h2 class="mb-4 border-bottom pb-2 border-secondary">Model Analytics & Performance</h2>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card p-4 text-center">
+                        <h4 class="text-muted text-uppercase">Precision</h4>
+                        <h1 style="color: #38bdf8;">88.0%</h1>
+                        <p class="text-muted small mt-2">Accuracy when flagging threats. Minimizes false positive account freezes.</p>
+                    </div>
+                    <div class="card p-4 text-center">
+                        <h4 class="text-muted text-uppercase">Recall</h4>
+                        <h1 style="color: #22c55e;">85.0%</h1>
+                        <p class="text-muted small mt-2">Total percentage of actual systemic threats successfully intercepted.</p>
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="card p-3 h-100 d-flex flex-column align-items-center">
+                        <h5 class="text-muted text-uppercase mb-3">Confusion Matrix</h5>
+                        <img src="/static/threat_detection_matrix.png" alt="Confusion Matrix" class="img-fluid rounded border border-secondary" style="max-height: 400px;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- PAGE NAVIGATION ---
+        function switchPage(pageId, navElement) {
+            document.querySelectorAll('.page-view').forEach(page => page.classList.remove('active-page'));
+            document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active-page');
+            navElement.classList.add('active');
+        }
+
+        // --- ML SYSTEM LOGIC ---
+        let safeTally = 0, reviewTally = 0, fraudTally = 0, totalTally = 0;
+        let totalVolume = 0.0, moneyProtected = 0.0;
+        
+        const ctx = document.getElementById('threatChart').getContext('2d');
+        const threatChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: { labels: ['Secure', 'Review', 'Threat'], datasets: [{ data: [0, 0, 0], backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'], borderColor: '#1e293b', borderWidth: 2 }] },
+            options: { cutout: '75%', plugins: { legend: { display: false } }, responsive: true }
+        });
+
+        let autoScanInterval = null;
+
+        function toggleAutoScan() {
+            const btn = document.getElementById('autoBtn');
+            if (autoScanInterval) {
+                clearInterval(autoScanInterval);
+                autoScanInterval = null;
+                btn.innerText = "Enable Auto-Scan";
+                btn.className = "btn btn-primary btn-custom";
+            } else {
+                btn.innerText = "Disable Auto-Scan";
+                btn.className = "btn btn-warning btn-custom";
+                // Trigger every 1 second
+                autoScanInterval = setInterval(() => {
+                    const type = Math.random() > 0.075 ? 'normal' : 'fraud';
+                    scanTransaction(type);
+                }, 1000);
+            }
+        }
+
+        // Helper function to efficiently add rows and limit table size
+        function addRowToTable(tableId, rowHtml, limit = 100) {
+            const tbody = document.getElementById(tableId);
+            tbody.insertAdjacentHTML('afterbegin', rowHtml);
+            if (tbody.children.length > limit) {
+                tbody.removeChild(tbody.lastElementChild);
+            }
+        }
+
+        function scanTransaction(type) {
+            fetch(`/scan/${type}`)
+                .then(response => response.json())
+                .then(data => {
+                    const isFraud = data.prediction === "FRAUD";
+                    const isSuspicious = (!isFraud && data.amount > 180000);
+                    
+                    totalTally++;
+                    totalVolume += data.amount;
+                    document.getElementById('totalVolume').innerText = "₹" + totalVolume.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+                    if (isFraud) {
+                        fraudTally++;
+                        moneyProtected += data.amount;
+                        document.getElementById('moneyProtected').innerText = "₹" + moneyProtected.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                    } else if (isSuspicious) {
+                        reviewTally++;
+                    } else {
+                        safeTally++;
+                    }
+                    
+                    document.getElementById('totalScanned').innerText = totalTally;
+                    document.getElementById('safeCount').innerText = safeTally;
+                    document.getElementById('reviewCount').innerText = reviewTally;
+                    document.getElementById('fraudCount').innerText = fraudTally;
+                    threatChart.data.datasets[0].data = [safeTally, reviewTally, fraudTally];
+                    threatChart.update();
+
+                    // 1. Format Terminal Output
+                    let statusHtml, riskColor, tableStatusHtml, amtColor;
+                    if (isFraud) { 
+                        statusHtml = `<span class="fraud">[BLOCKED]</span>`; 
+                        riskColor = '#ef4444'; 
+                        tableStatusHtml = `<span class="fraud">BLOCKED</span>`;
+                        amtColor = "text-danger fw-bold";
+                    } else if (isSuspicious) { 
+                        statusHtml = `<span class="warning">[FLAGGED FOR REVIEW]</span>`; 
+                        riskColor = '#f59e0b'; 
+                        tableStatusHtml = `<span class="warning">REVIEW</span>`;
+                        amtColor = "text-warning fw-bold";
+                    } else { 
+                        statusHtml = `<span class="secure">[CLEARED]</span>`; 
+                        riskColor = '#38bdf8'; 
+                        tableStatusHtml = `<span class="secure">CLEARED</span>`;
+                        amtColor = "text-white";
+                    }
+
+                    const logEntry = `<div class="log-entry"><div>> <strong>TXN:</strong> ${data.transaction_id} | <strong>STATUS:</strong> ${statusHtml}</div><div style="color: #94a3b8; margin-top: 4px;">├─ Amount: ₹${data.amount.toLocaleString('en-IN')} <br>├─ Routing: ${data.location} (${data.device}) <br>└─ <span style="color: ${riskColor}">Risk: ${data.risk_score}%</span></div></div>`;
+                    const terminal = document.getElementById('terminal');
+                    // Same optimization for the terminal
+                    terminal.insertAdjacentHTML('beforeend', logEntry);
+                    if (terminal.children.length > 50) terminal.removeChild(terminal.firstElementChild);
+                    terminal.scrollTop = terminal.scrollHeight;
+
+                    const timeString = new Date().toLocaleTimeString();
+                    
+                    // 2. Add to ALL TRANSACTIONS Table
+                    const riskBadge = isFraud ? 'bg-danger' : (isSuspicious ? 'bg-warning text-dark' : 'bg-success');
+                    const allRow = `<tr><td class="text-muted">${timeString}</td><td><span style="color: #38bdf8;">${data.transaction_id}</span></td><td class="text-muted">${data.location}</td><td class="${amtColor}">₹${data.amount.toLocaleString('en-IN')}</td><td><span class="badge ${riskBadge}">${data.risk_score}%</span></td><td>${tableStatusHtml}</td></tr>`;
+                    addRowToTable('allTableBody', allRow, 100);
+                    
+                    // 3. Add to Specific Tables
+                    if (isFraud) {
+                        const threatRow = `<tr><td class="text-muted">${timeString}</td><td><span style="color: #38bdf8;">${data.transaction_id}</span></td><td class="text-muted">${data.location}</td><td class="text-danger fw-bold">₹${data.amount.toLocaleString('en-IN')}</td><td><span class="badge bg-danger">${data.risk_score}%</span></td><td><span class="secure">ISOLATED</span></td></tr>`;
+                        addRowToTable('threatTableBody', threatRow, 100);
+                    } else if (isSuspicious) {
+                        const reviewRow = `<tr><td class="text-muted">${timeString}</td><td><span style="color: #38bdf8;">${data.transaction_id}</span></td><td class="text-muted">${data.location}</td><td class="text-warning fw-bold">₹${data.amount.toLocaleString('en-IN')}</td><td class="text-muted">High Value Anomaly</td><td><button class="btn btn-sm btn-outline-warning">Review</button></td></tr>`;
+                        addRowToTable('reviewTableBody', reviewRow, 100);
+                    }
+                });
+        }
+    </script>
+</body>
+</html>

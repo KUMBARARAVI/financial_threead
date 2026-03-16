@@ -1,0 +1,5 @@
+copy the creditcard.csv datset to dataset folder.
+install all the required libraries.
+save all the programs files
+run main.py once. then xgboost_fraud_model.joblib will be created if not already present.
+run the app.py and open the link from terminal in the browser.
